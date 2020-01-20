@@ -1,0 +1,189 @@
+<html>
+    <head>
+        <script type="text/javascript" src="whiteboard_model.js"></script>
+        <script type="text/javascript">
+
+            class whiteboard_canvas
+            {
+                constructor(canvas, center, model)
+                {
+                    this._canvas = canvas;
+                    this._context = this._canvas.getContext("2d");
+
+                    this._center = center;
+                    this._stroke = null;
+                    this._model = model;
+                    this._erase = false;
+
+                    this._color = color.from_css("#000000");
+                    this._line_width = 1;
+                    this._erase_line_width = 40;
+
+                    this.render();
+                }
+
+                resize(width, height)
+                {
+                    this._canvas.width = width;
+                    this._canvas.height = height;
+
+                    this.render();
+                }
+
+                clear()
+                {
+                    this._model.clear_strokes()
+                    this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
+                }
+
+                toggle_erase()
+                {
+                    this._erase = !this._erase;
+                }
+
+                open_stroke(pos)
+                {
+                    let line_width = this._erase ? this._erase_line_width : this._line_width;
+                    let line_color = this._erase ? color.from_css("#FFFFFF") : this._color;
+                    this._stroke = this._model.create_stroke(this._model_coordinate(pos), line_color, line_width);
+                    this.open_canvas_stroke(pos, this._stroke.color, this._stroke.line_width);
+                }
+
+                move_stroke(pos)
+                {
+                    if(this._stroke)
+                    {
+                        this._stroke.draw(this._model_coordinate(pos));
+                        this.move_canvas_stroke(pos);
+                    }
+                }
+
+                close_stroke(pos)
+                {
+                    this.move_stroke(pos);
+                    this._stroke = null;
+                }
+
+                render()
+                {
+                    for(const stroke of this._model.strokes)
+                    {
+                        if(stroke.data)
+                        {
+                            this.open_canvas_stroke(stroke.data[0], stroke.color, stroke.line_width);
+                            for(let i = 1; i < stroke.data.length; ++i)
+                            {
+                                this.move_canvas_stroke(stroke.data[i]);
+                            }
+                        }
+                    }
+                }
+
+                open_canvas_stroke(pos, line_color, line_width)
+                {
+                    this._context.beginPath();
+                    this._context.lineWidth = line_width;
+                    this._context.strokeStyle = line_color.css;
+                    this._context.moveTo(pos.x, pos.y);
+                }
+
+                move_canvas_stroke(pos)
+                {
+                    this._context.lineTo(pos.x, pos.y);
+                    this._context.stroke();
+                }
+
+                _model_coordinate(pos)
+                {
+                    return new coordinate(pos.x + this._center.x, pos.y + this._center.y);
+                }
+            }
+
+            function canvas_coords(event)
+            {
+                //console.log(event);
+                return new coordinate(event.pageX, event.pageY);
+            }
+
+            window.addEventListener("load", function() {
+                let listener = document.getElementById("mouselistener");
+                let canvas = document.getElementById("whiteboard");
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                let model = new whiteboard();
+
+                var view = new whiteboard_canvas(canvas, new coordinate(0, 0), model);
+
+                listener.addEventListener('mousedown', function(event) {
+                    view.open_stroke(canvas_coords(event));
+                }, false);
+                listener.addEventListener('mousemove', function(event) {
+                    view.move_stroke(canvas_coords(event));
+                }, false);
+                listener.addEventListener('mouseup', function(event) {
+                    view.close_stroke(canvas_coords(event));
+                }, false);
+                listener.addEventListener('mouseout', function(event) {
+                    let menu_element = document.getElementById("menu");
+                    if((menu_element == event.relatedTarget || menu_element.contains(event.relatedTarget)) && event.buttons != 0)
+                    {
+                        menu_element.classList.add("hidden");
+                    }
+                    else if(event.originalTarget && event.originalTarget == canvas)
+                    {
+                        view.close_stroke(canvas_coords(event));
+                    }
+                }, false);
+
+                window.addEventListener('resize', function(event) {
+                    view.resize(window.innerWidth, window.innerHeight);
+                });
+
+                document.getElementById("menu").addEventListener("mouseover", function(event){
+                    if(event.buttons == 0)
+                        this.classList.add("active");
+                }, false);
+
+                document.getElementById("menu").addEventListener("mouseout", function(event){
+                    this.classList.remove("hidden");
+                    this.classList.remove("active");
+                }, false);
+
+                document.getElementById("clear_button").addEventListener("click", function(event) {
+                    view.clear();
+                }, false);
+
+                document.getElementById("erase_button").addEventListener("click", function(event) {
+                    this.classList.toggle("active");
+                    view.toggle_erase();
+                }, false);
+            }, false);
+        </script>
+
+        <style>
+            #menu {display: inline-block; margin: 10px; font-family: Arial, Helvetica, sans-serif; position: absolute; opacity: .25; cursor: pointer; background-color:#A0D5E8;}
+            #menu .header {padding: 0 5px; display: table-cell; vertical-align: middle; height: 1.5em; font-size: 14pt;}
+            #menu.hidden {opacity: 0; cursor: default;}
+            #menu.active {opacity: 1;}
+            #menu ul {display: none; background-color:#D7F9FB; margin: 0; padding: 0; list-style: none;}
+            #menu.active ul {display:list-item;}
+            #menu li {padding-left: 15px; padding-right: 5px}
+            #menu li .menu_header.active {color: #F76D16}
+            #menu li:hover {background-color:#05719D;}
+            #menu li .menu_header {display:table-cell; vertical-align: middle; height: 1.5em;}
+        </style>
+
+    </head>
+    <body style="margin: 0; padding: 0">
+        <div id="mouselistener">
+            <canvas id="whiteboard" width="400" height="400" style="position: absolute; padding: 0; margin: 0"></canvas>
+            <span id="menu">
+                <span class="header">MENU</span>
+                <ul>
+                    <li><span id="erase_button" class="menu_header">ERASE</span></li>
+                    <li><span id="clear_button" class="menu_header">CLEAR</span></li>
+                </ul>
+            </div>
+        </div>
+    </body>
+</html>
