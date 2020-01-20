@@ -66,6 +66,7 @@ class whiteboard
     constructor()
     {
         this.strokes = [];
+        this.version = 1;
     }
 
     create_stroke(where, color, line_width)
@@ -86,5 +87,10 @@ class whiteboard
     clear_strokes()
     {
         this.strokes = []
+    }
+
+    serialize()
+    {
+        return new Blob([JSON.stringify(this)], {type: 'application/json'});
     }
 }
