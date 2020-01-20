@@ -163,6 +163,12 @@
                     link.href = URL.createObjectURL(model.serialize());
                     link.click();
                 }, false);
+
+                document.getElementById("export_button").addEventListener("click", function(event) {
+                    let link = document.getElementById("export_file_link");
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                }, false);
             }, false);
         </script>
 
@@ -188,7 +194,8 @@
                 <ul>
                     <li><span id="erase_button" class="menu_header">ERASE</span></li>
                     <li><span id="clear_button" class="menu_header">CLEAR</span></li>
-                    <li><span id="save_button" class="menu_header">SAVE<a id="save_file_link" name="whiteboard.json" download="whiteboard.json" href="#" style="display: none;"></a></span></li>
+                    <li><span id="save_button" class="menu_header">SAVE<a id="save_file_link" download="whiteboard.json" href="#" style="display: none;"></a></span></li>
+                    <li><span id="export_button" class="menu_header">EXPORT<a id="export_file_link" download="whiteboard.png" href="#" style="display: none;"></a></span></li>
                 </ul>
             </div>
         </div>
