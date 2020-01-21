@@ -185,7 +185,7 @@
                     link.click();
                 }, false);
 
-                document.onkeydown = function(e) {
+                window.addEventListener("keydown", function(e) {
                     e = e || window.event;
 
                     if (e.keyCode == 38) {
@@ -206,7 +206,7 @@
                     }
 
                     console.log(e);
-                };
+                }, false);
             }, false);
         </script>
 
