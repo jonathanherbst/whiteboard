@@ -1,6 +1,16 @@
 <html>
     <head>
+        <script type="text/javascript">
+            var config = {
+                gapi: {
+                    api_key: "AIzaSyCimxB-5VIKEn52w7REwv1yXg-3wxCljsI",
+                    client_id: "200128710291-u2no7ie6kad42da89aiggnt112s3pj6e.apps.googleusercontent.com",
+                },
+            };
+        </script>
+        <script type="text/javascript" src="config.js"></script>
         <script type="text/javascript" src="whiteboard_model.js"></script>
+        <script type="text/javascript" src="google_drive.js"></script>
         <script type="text/javascript">
 
             class whiteboard_canvas
@@ -226,7 +236,7 @@
     </head>
     <body style="margin: 0; padding: 0">
         <div id="mouselistener">
-            <canvas id="whiteboard" width="400" height="400" style="position: absolute; padding: 0; margin: 0"></canvas>
+            <canvas id="whiteboard" style="position: absolute; padding: 0; margin: 0"></canvas>
             <span id="menu">
                 <span class="header">MENU</span>
                 <ul>
