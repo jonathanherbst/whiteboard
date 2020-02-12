@@ -94,3 +94,11 @@ class whiteboard
         return new Blob([JSON.stringify(this)], {type: 'application/json'});
     }
 }
+
+class whiteboard_controller
+{
+    constructor()
+    {
+        this.data_model = new whiteboard();
+    }
+};

@@ -1,5 +1,7 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
+        <meta charset="utf-8"/>
         <script type="text/javascript">
             var config = {
                 gapi: {
@@ -9,100 +11,67 @@
             };
         </script>
         <script type="text/javascript" src="config.js"></script>
-        <script type="text/javascript" src="whiteboard_model.js"></script>
+        <script type="text/javascript" src="whiteboard.js"></script>
         <script type="text/javascript" src="google_drive.js"></script>
         <script type="text/javascript">
 
             class whiteboard_canvas
             {
-                constructor(canvas, center, model)
+                static canvas_coords(event)
                 {
-                    this._canvas = canvas;
-                    this._context = this._canvas.getContext("2d");
+                    return new coordinate(event.pageX, event.pageY);
+                }
 
+                constructor(canvas_element, mouse_listener_element, center, model)
+                {
+                    this._mouse_listener = mouse_listener_element;
+                    this._canvas = canvas_element;
+                    this._context = this._canvas.getContext("2d");
+            
                     this._center = center;
                     this._stroke = null;
                     this._model = model;
                     this._erase = false;
-
+            
                     this._color = color.from_css("#000000");
                     this._line_width = 1;
                     this._erase_line_width = 40;
 
-                    this.render();
+                    this._bindings = {
+                        "mouseout": []
+                    };
+
+                    let self = this;
+                    this._mouse_listener.addEventListener('mousedown', (event) => { self._on_mouse_down(event); }, false);
+                    this._mouse_listener.addEventListener('mousemove', (event) => { self._on_mouse_move(event); }, false);
+                    this._mouse_listener.addEventListener('mouseup', (event) => { self._on_mouse_up(event); }, false);
+                    this._mouse_listener.addEventListener('mouseout', (event) => { self._on_mouse_out(event); }, false);
                 }
 
+                bind(name, fn)
+                {
+                    this._bindings[name].push(fn);
+                }
+            
                 resize(width, height)
                 {
                     this._canvas.width = width;
                     this._canvas.height = height;
-
+            
                     this.render();
                 }
-
+            
                 clear()
                 {
                     this._model.clear_strokes()
                     this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
                 }
-
+            
                 toggle_erase()
                 {
                     this._erase = !this._erase;
                 }
-
-                open_stroke(pos)
-                {
-                    let line_width = this._erase ? this._erase_line_width : this._line_width;
-                    let line_color = this._erase ? color.from_css("#FFFFFF") : this._color;
-                    this._stroke = this._model.create_stroke(this._model_from_canvas(pos), line_color, line_width);
-                    this.open_canvas_stroke(pos, this._stroke.color, this._stroke.line_width);
-                }
-
-                move_stroke(pos)
-                {
-                    if(this._stroke)
-                    {
-                        this._stroke.draw(this._model_from_canvas(pos));
-                        this.move_canvas_stroke(pos);
-                    }
-                }
-
-                close_stroke(pos)
-                {
-                    this.move_stroke(pos);
-                    this._stroke = null;
-                }
-
-                render()
-                {
-                    for(const stroke of this._model.strokes)
-                    {
-                        if(stroke.data)
-                        {
-                            this.open_canvas_stroke(this._canvas_from_model(stroke.data[0]), stroke.color, stroke.line_width);
-                            for(let i = 1; i < stroke.data.length; ++i)
-                            {
-                                this.move_canvas_stroke(this._canvas_from_model(stroke.data[i]));
-                            }
-                        }
-                    }
-                }
-
-                open_canvas_stroke(pos, line_color, line_width)
-                {
-                    this._context.beginPath();
-                    this._context.lineWidth = line_width;
-                    this._context.strokeStyle = line_color.css;
-                    this._context.moveTo(pos.x, pos.y);
-                }
-
-                move_canvas_stroke(pos)
-                {
-                    this._context.lineTo(pos.x, pos.y);
-                    this._context.stroke();
-                }
-
+            
                 move_canvas(x, y)
                 {
                     this._center.x += this._canvas.width * x;
@@ -112,22 +81,203 @@
                     this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
                     this.render();
                 }
-
+            
+                render()
+                {
+                    for(const stroke of this._model.strokes)
+                    {
+                        if(stroke.data)
+                        {
+                            this._open_canvas_stroke(this._canvas_from_model(stroke.data[0]), stroke.color, stroke.line_width);
+                            for(let i = 1; i < stroke.data.length; ++i)
+                            {
+                                this._move_canvas_stroke(this._canvas_from_model(stroke.data[i]));
+                            }
+                        }
+                    }
+                }
+            
+                _open_stroke(pos)
+                {
+                    let line_width = this._erase ? this._erase_line_width : this._line_width;
+                    let line_color = this._erase ? color.from_css("#FFFFFF") : this._color;
+                    this._stroke = this._model.create_stroke(this._model_from_canvas(pos), line_color, line_width);
+                    this._open_canvas_stroke(pos, this._stroke.color, this._stroke.line_width);
+                }
+            
+                _move_stroke(pos)
+                {
+                    if(this._stroke)
+                    {
+                        this._stroke.draw(this._model_from_canvas(pos));
+                        this._move_canvas_stroke(pos);
+                    }
+                }
+            
+                _close_stroke(pos)
+                {
+                    this._move_stroke(pos);
+                    this._stroke = null;
+                }
+            
+                _open_canvas_stroke(pos, line_color, line_width)
+                {
+                    this._context.beginPath();
+                    this._context.lineWidth = line_width;
+                    this._context.strokeStyle = line_color.css;
+                    this._context.moveTo(pos.x, pos.y);
+                }
+            
+                _move_canvas_stroke(pos)
+                {
+                    this._context.lineTo(pos.x, pos.y);
+                    this._context.stroke();
+                }
+            
                 _canvas_from_model(pos)
                 {
                     return new coordinate(pos.x - this._center.x, pos.y - this._center.y);
                 }
-
+            
                 _model_from_canvas(pos)
                 {
                     return new coordinate(pos.x + this._center.x, pos.y + this._center.y);
                 }
+
+                _on_mouse_down(event)
+                {
+                    this._open_stroke(whiteboard_canvas.canvas_coords(event));
+                }
+
+                _on_mouse_move(event)
+                {
+                    this._move_stroke(whiteboard_canvas.canvas_coords(event));
+                }
+
+                _on_mouse_up(event)
+                {
+                    this._close_stroke(whiteboard_canvas.canvas_coords(event));
+                }
+
+                _on_mouse_out(event)
+                {
+                    let close_stroke = true;
+                    this._bindings["mouseout"].map((fn) => {close_stroke = close_stroke && fn(event)});
+
+                    if(close_stroke)
+                        this._close_stroke(whiteboard_canvas.canvas_coords(event));
+                }
             }
 
-            function canvas_coords(event)
+            class html_view
             {
-                //console.log(event);
-                return new coordinate(event.pageX, event.pageY);
+                constructor(controller)
+                {
+                    this._controller = controller;
+                    this._mouse_listener = document.getElementById("mouselistener");
+                    this._html_canvas = document.getElementById("whiteboard");
+
+                    this._canvas = new whiteboard_canvas(this._html_canvas, this._mouse_listener, new coordinate(0, 0), controller.data_model);
+                    this._canvas.resize(window.innerWidth, window.innerHeight);
+
+                    this._menu_element = document.getElementById("menu");
+                    this._erase_button = document.getElementById("erase_button");
+
+                    this._bindings = {
+                        "clear": [],
+                        "erase": [],
+                        "save": [],
+                        "export": [],
+                    };
+
+                    let self = this;
+                    this._canvas.bind("mouseout", (event) => { self._on_canvas_mouseout(event); });
+                    window.addEventListener('resize', function(event) {
+                        self._canvas.resize(window.innerWidth, window.innerHeight);
+                    }, false);
+
+                    // bind the menu
+                    this._menu_element.addEventListener("mouseover", (event) => { self._on_menu_mouse_over(event); }, false);
+                    this._menu_element.addEventListener("mouseout", (event) => { self._on_menu_mouse_out(event); }, false);
+                    document.getElementById("clear_button").addEventListener("click", (event) => { self._on_clear_button_clicked(event); }, false);
+                    this._erase_button.addEventListener("click", (event) => { self._on_erase_button_clicked(event); }, false);
+                    document.getElementById("save_button").addEventListener("click", (event) => { self._on_save_button_clicked(event); }, false);
+                    document.getElementById("export_button").addEventListener("click", (event) => { self._on_export_button_clicked(event); }, false);
+
+                    // bind key presses
+                    window.addEventListener("keydown", (event) => { self._on_keydown(event); }, false);
+                }
+
+                _on_canvas_mouseout(event)
+                {
+                    if((this._menu_element == event.relatedTarget || this._menu_element.contains(event.relatedTarget)) && event.buttons != 0)
+                    {
+                        this._menu_element.classList.add("hidden");
+                        return false;
+                    }
+                    else if(event.originalTarget && event.originalTarget == this._html_canvas);
+                    {
+                        return true;
+                    }
+                    return false;
+                }
+
+                _on_menu_mouse_over(event)
+                {
+                    if(event.buttons == 0)
+                        this._menu_element.classList.add("active");
+                }
+
+                _on_menu_mouse_out(event)
+                {
+                    this._menu_element.classList.remove("hidden");
+                    this._menu_element.classList.remove("active");
+                }
+
+                _on_clear_button_clicked(event)
+                {
+                    this._canvas.clear();
+                    this._bindings["clear"].map((fn) => { fn(event); });
+                }
+
+                _on_erase_button_clicked(event)
+                {
+                    this._erase_button.classList.toggle("active");
+                    this._canvas.toggle_erase();
+                    this._bindings["erase"].map((fn) => { fn(event); });
+                }
+
+                _on_save_button_clicked(event)
+                {
+                    this._bindings["save"].map((fn) => { fn(event); });
+                }
+
+                _on_export_button_clicked(event)
+                {
+                    this._bindings["export"].map((fn) => { fn(event); });
+                }
+
+                _on_keydown(event)
+                {
+                    event = event || window.event;
+
+                    if (event.keyCode == 38) {
+                        // up arrow
+                        this._canvas.move_canvas(0, 1);
+                    }
+                    else if (event.keyCode == 40) {
+                        // down arrow
+                        this._canvas.move_canvas(0, -1);
+                    }
+                    else if (event.keyCode == 37) {
+                        // left arrow
+                        this._canvas.move_canvas(-1, 0);
+                    }
+                    else if (event.keyCode == 39) {
+                        // right arrow
+                        this._canvas.move_canvas(1, 0);
+                    }
+                }
             }
 
             window.addEventListener("load", function() {
@@ -136,92 +286,15 @@
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
                 let model = new whiteboard();
+                let controller = new whiteboard_controller();
+                let view = new html_view(controller);
 
-                var view = new whiteboard_canvas(canvas, new coordinate(0, 0), model);
-
-                listener.addEventListener('mousedown', function(event) {
-                    view.open_stroke(canvas_coords(event));
-                }, false);
-                listener.addEventListener('mousemove', function(event) {
-                    view.move_stroke(canvas_coords(event));
-                }, false);
-                listener.addEventListener('mouseup', function(event) {
-                    view.close_stroke(canvas_coords(event));
-                }, false);
-                listener.addEventListener('mouseout', function(event) {
-                    let menu_element = document.getElementById("menu");
-                    if((menu_element == event.relatedTarget || menu_element.contains(event.relatedTarget)) && event.buttons != 0)
-                    {
-                        menu_element.classList.add("hidden");
-                    }
-                    else if(event.originalTarget && event.originalTarget == canvas)
-                    {
-                        view.close_stroke(canvas_coords(event));
-                    }
-                }, false);
-
-                window.addEventListener('resize', function(event) {
-                    view.resize(window.innerWidth, window.innerHeight);
-                });
-
-                document.getElementById("menu").addEventListener("mouseover", function(event){
-                    if(event.buttons == 0)
-                        this.classList.add("active");
-                }, false);
-
-                document.getElementById("menu").addEventListener("mouseout", function(event){
-                    this.classList.remove("hidden");
-                    this.classList.remove("active");
-                }, false);
-
-                document.getElementById("clear_button").addEventListener("click", function(event) {
-                    view.clear();
-                }, false);
-
-                document.getElementById("erase_button").addEventListener("click", function(event) {
-                    this.classList.toggle("active");
-                    view.toggle_erase();
-                }, false);
-
-                document.getElementById("save_button").addEventListener("click", function(event) {
-                    let link = document.getElementById("save_file_link");
-                    link.href = URL.createObjectURL(model.serialize());
-                    link.click();
-                }, false);
-
-                document.getElementById("export_button").addEventListener("click", function(event) {
-                    let link = document.getElementById("export_file_link");
-                    link.href = canvas.toDataURL("image/png");
-                    link.click();
-                }, false);
-
-                window.addEventListener("keydown", function(e) {
-                    e = e || window.event;
-
-                    if (e.keyCode == 38) {
-                        // up arrow
-                        view.move_canvas(0, 1);
-                    }
-                    else if (e.keyCode == 40) {
-                        // down arrow
-                        view.move_canvas(0, -1);
-                    }
-                    else if (e.keyCode == 37) {
-                        // left arrow
-                        view.move_canvas(-1, 0);
-                    }
-                    else if (e.keyCode == 39) {
-                        // right arrow
-                        view.move_canvas(1, 0);
-                    }
-
-                    console.log(e);
-                }, false);
+                
             }, false);
         </script>
 
         <style>
-            #menu {display: inline-block; margin: 10px; font-family: Arial, Helvetica, sans-serif; position: absolute; opacity: .25; cursor: pointer; background-color:#A0D5E8;}
+            #menu {display: inline-block; margin: 10px; font-family: Verdana, Arial, Helvetica, sans-serif; position: absolute; opacity: .25; cursor: pointer; background-color:#A0D5E8;}
             #menu .header {padding: 0 5px; display: table-cell; vertical-align: middle; height: 1.5em; font-size: 14pt;}
             #menu.hidden {opacity: 0; cursor: default;}
             #menu.active {opacity: 1;}

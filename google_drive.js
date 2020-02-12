@@ -16,7 +16,8 @@ class google_drive
         {
             const page_token = response ? response.pageToken : null;
             response = await this._list_files(name, page_token);
-            for(const f of response.files)
+            console.log(response);
+            for(const f of response.result.files)
                 yield f;
         } while(response && response.pageToken);
     }
@@ -109,15 +110,16 @@ class google_drive
             let script = document.createElement('script');
             script.src = "https://apis.google.com/js/api.js";
             script.addEventListener("load", function(event) {
+                console.log("gapi loaded")
+                console.log(gapi)
                 gapi.load('client:auth2', {
                         callback: function(){
+                            console.log("gapi auth2 loaded");
                             resolve();
                         },
                         onerror: function() {
+                            console.log("gapi auth2 load error");
                             reject(Error("Failed loading google api."));
-                        },
-                        ontimeout: function() {
-                            reject(Error("Timed out loading google api."));
                         }
                 });
             }, false);
@@ -126,12 +128,12 @@ class google_drive
             }, false);
             document.body.append(script);
         });
-        return promise;
+        return await promise;
     }
 
-    async __initialize()
+    async _initialize()
     {
-        let promise = new Promise(function(resolve, reject) {
+        return await new Promise(function(resolve, reject) {
             gapi.client.init({
                 apiKey: config.gapi.key,
                 clientId: config.gapi.client_id,
@@ -143,12 +145,11 @@ class google_drive
                 reject(error);
             });
         });
-        return promise;
     }
 
     async _sign_in()
     {
-        let promise = new Promise(function(resolve, reject){
+        return await new Promise(function(resolve, reject){
             gapi.auth2.getAuthInstance().signIn().then(function() {
                 resolve()
             }, function(error) {
